@@ -52,29 +52,32 @@ resource "aws_instance" "web" {
     encrypted = true
   }
 
-  user_data = <<-EOF
+  user_data = <<-EOF2
               #!/bin/bash
               apt-get update
               apt-get install -y apache2
               sed -i -e 's/80/8080/' /etc/apache2/ports.conf
               echo "Hello World" > /var/www/html/index.html
               systemctl restart apache2
-              EOF
+              EOF2
 }
 
 resource "aws_security_group" "web-sg" {
-  name = "${random_pet.sg.id}-sg"
+  name        = "${random_pet.sg.id}-sg"
+  description = "Security group for web instance - HTTP access restricted to internal network"
 
   ingress {
+    description = "Allow HTTP access from internal network only"
     from_port   = 8080
     to_port     = 8080
     protocol    = "tcp"
-    cidr_blocks = ["203.0.113.0/24"]
+    cidr_blocks = ["10.0.0.0/16"]
   }
 
   // connectivity to ubuntu mirrors is required to run `apt-get update` and `apt-get install apache2`
   # tfsec:ignore:aws-ec2-no-public-egress-sgr -- outbound required for apt-get package installs
   egress {
+    description = "Allow outbound access for package installation"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
