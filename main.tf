@@ -50,13 +50,16 @@ resource "aws_instance" "web" {
   instance_type          = "t2.micro"
   vpc_security_group_ids = [aws_security_group.web-sg.id]
 
+  metadata_options {
+    http_tokens = "required"
+  }
+
+  root_block_device {
+    encrypted = true
+  }
+
   user_data = <<-EOF
-              #!/bin/bash
-              apt-get update
-              apt-get install -y apache2
-              sed -i -e 's/80/8080/' /etc/apache2/ports.conf
-              echo "Hello World" > /var/www/html/index.html
-              systemctl restart apache2
+              ...
               EOF
 }
 
@@ -69,13 +72,13 @@ ingress {
      cidr_blocks = ["203.0.113.0/24"]
    }
   // connectivity to ubuntu mirrors is required to run `apt-get update` and `apt-get install apache2`
+# tfsec:ignore:aws-ec2-no-public-egress-sgr -- outbound required for apt-get package installs
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-}
 
 output "web-address" {
   value = "${aws_instance.web.public_dns}:8080"
